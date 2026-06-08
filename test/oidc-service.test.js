@@ -65,6 +65,8 @@ describe("OIDC 服務", () => {
     assert.ok(jwk.n);
     assert.ok(jwk.e);
     assert.equal(jwk.d, undefined);
+    assert.equal(jwk.ext, undefined);
+    assert.deepEqual(Object.keys(jwk).sort(), ["alg", "e", "kid", "kty", "n", "use"]);
   });
 
   it("未知 client 或 redirect URI 會被拒絕", () => {

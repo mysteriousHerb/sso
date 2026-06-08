@@ -14,10 +14,12 @@ export class OidcService {
       token_endpoint: `${this.config.issuer}/token`,
       userinfo_endpoint: `${this.config.issuer}/userinfo`,
       jwks_uri: `${this.config.issuer}/jwks.json`,
+      grant_types_supported: ["authorization_code"],
       response_types_supported: ["code"],
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["RS256"],
       scopes_supported: ["openid", "email", "profile"],
+      code_challenge_methods_supported: ["S256"],
       token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
       claims_supported: [
         "sub",

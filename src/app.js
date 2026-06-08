@@ -14,7 +14,10 @@ export function createApp({ store, config }) {
           return json(oidcService.getDiscoveryMetadata());
         }
         if (request.method === "GET" && url.pathname === "/jwks.json") {
-          return json({ keys: [await exportPublicJwk(requirePrivateJwk(config))] });
+          return json(
+            { keys: [await exportPublicJwk(requirePrivateJwk(config))] },
+            { headers: { "content-type": "application/jwk-set+json; charset=utf-8" } }
+          );
         }
         if (request.method === "GET" && url.pathname === "/authorize") {
           return handleAuthorize(url, oidcService);

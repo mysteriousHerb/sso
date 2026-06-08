@@ -118,6 +118,19 @@ describe("Worker HTTP 端點", () => {
     assert.equal(token.token_type, "Bearer");
   });
 
+  it("/jwks.json 會回傳最小 RSA JWKS 與標準 content-type", async () => {
+    const { app } = createTestApp();
+
+    const response = await app.fetch(new Request("https://sso.example.com/jwks.json"));
+    const jwks = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /^application\/jwk-set\+json/);
+    assert.deepEqual(Object.keys(jwks.keys[0]).sort(), ["alg", "e", "kid", "kty", "n", "use"]);
+    assert.equal(jwks.keys[0].kty, "RSA");
+    assert.equal(jwks.keys[0].alg, "RS256");
+  });
+
   it("管理邀請碼端點需要 ADMIN_TOKEN", async () => {
     const { app } = createTestApp();
     const denied = await app.fetch(

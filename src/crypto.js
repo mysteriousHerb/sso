@@ -42,12 +42,16 @@ export async function verifyJwt(jwt, jwk) {
 }
 
 export async function exportPublicJwk(privateJwk) {
-  const { d, dp, dq, p, q, qi, key_ops, ...publicJwk } = privateJwk;
+  if (privateJwk.kty !== "RSA" || !privateJwk.n || !privateJwk.e) {
+    throw new Error("PRIVATE_JWK 必須是 RSA JWK");
+  }
   return {
-    ...publicJwk,
     kty: "RSA",
-    use: "sig",
-    alg: "RS256"
+    n: privateJwk.n,
+    e: privateJwk.e,
+    alg: "RS256",
+    kid: privateJwk.kid,
+    use: "sig"
   };
 }
 
