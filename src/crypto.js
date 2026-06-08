@@ -9,18 +9,18 @@ export async function signJwt({ privateJwk, claims, now = () => new Date(), ttlS
     exp: iat + ttlSeconds
   };
   const header = {
-    alg: "ES256",
+    alg: "RS256",
     typ: "JWT",
     kid: privateJwk.kid
   };
   const signingInput = `${base64UrlJson(header)}.${base64UrlJson(payload)}`;
   const key = await importPrivateKey(privateJwk);
-  const derSignature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
+  const signature = await crypto.subtle.sign(
+    { name: "RSASSA-PKCS1-v1_5" },
     key,
     encoder.encode(signingInput)
   );
-  return `${signingInput}.${base64UrlEncode(new Uint8Array(derSignature))}`;
+  return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
 }
 
 export async function verifyJwt(jwt, jwk) {
@@ -30,7 +30,7 @@ export async function verifyJwt(jwt, jwk) {
   }
   const key = await importPublicKey(await exportPublicJwk(jwk));
   const verified = await crypto.subtle.verify(
-    { name: "ECDSA", hash: "SHA-256" },
+    { name: "RSASSA-PKCS1-v1_5" },
     key,
     base64UrlDecode(encodedSignature),
     encoder.encode(`${encodedHeader}.${encodedPayload}`)
@@ -42,13 +42,12 @@ export async function verifyJwt(jwt, jwk) {
 }
 
 export async function exportPublicJwk(privateJwk) {
-  const { d, key_ops, ...publicJwk } = privateJwk;
+  const { d, dp, dq, p, q, qi, key_ops, ...publicJwk } = privateJwk;
   return {
     ...publicJwk,
-    kty: "EC",
-    crv: "P-256",
+    kty: "RSA",
     use: "sig",
-    alg: "ES256"
+    alg: "RS256"
   };
 }
 
@@ -104,7 +103,7 @@ async function importPrivateKey(jwk) {
   return crypto.subtle.importKey(
     "jwk",
     jwk,
-    { name: "ECDSA", namedCurve: "P-256" },
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["sign"]
   );
@@ -114,7 +113,7 @@ async function importPublicKey(jwk) {
   return crypto.subtle.importKey(
     "jwk",
     jwk,
-    { name: "ECDSA", namedCurve: "P-256" },
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["verify"]
   );

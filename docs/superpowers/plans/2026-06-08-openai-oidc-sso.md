@@ -14,7 +14,7 @@
 
 - `src/app.js`：Worker 路由、HTML 表單、OIDC 端點與回應。
 - `src/config.js`：環境變數解析與設定驗證。
-- `src/crypto.js`：ES256 JWK 匯入、JWT 簽名、雜湊與安全隨機值。
+- `src/crypto.js`：RS256 JWK 匯入、JWT 簽名、雜湊與安全隨機值。
 - `src/store.js`：D1 儲存介面與記憶體測試儲存介面。
 - `src/invite-service.js`：使用者登入、邀請碼檢查與建立使用者。
 - `src/oidc-service.js`：授權請求驗證、授權碼建立、token 簽發與 userinfo。
@@ -50,7 +50,7 @@
 
 ### Task 4: 授權碼與 token
 
-- [ ] 先寫測試：有效授權碼可換取 ES256 `id_token`。
+- [ ] 先寫測試：有效授權碼可換取 RS256 `id_token`。
 - [ ] 先寫測試：授權碼只能使用一次。
 - [ ] 先寫測試：錯誤 client secret 被拒絕。
 - [ ] 實作授權碼建立、消耗與 JWT 簽名。

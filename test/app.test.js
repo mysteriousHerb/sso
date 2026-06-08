@@ -9,13 +9,18 @@ let privateJwk;
 
 before(async () => {
   const keyPair = await crypto.subtle.generateKey(
-    { name: "ECDSA", namedCurve: "P-256" },
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256"
+    },
     true,
     ["sign", "verify"]
   );
   privateJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
   privateJwk.kid = "app-test-key";
-  privateJwk.alg = "ES256";
+  privateJwk.alg = "RS256";
   privateJwk.use = "sig";
 });
 

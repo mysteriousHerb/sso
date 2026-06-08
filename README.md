@@ -35,10 +35,10 @@ pnpm wrangler d1 execute openai_oidc_sso --file schema.sql
 
 將 `wrangler d1 create` 回傳的 `database_id` 填入 `wrangler.toml`。
 
-## 產生 ES256 私鑰 JWK
+## 產生 RS256 私鑰 JWK
 
 ```powershell
-node -e "crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']).then(k=>crypto.subtle.exportKey('jwk',k.privateKey)).then(j=>{j.kid='openai-sso-2026-06-08';j.alg='ES256';j.use='sig';console.log(JSON.stringify(j))})"
+node -e "crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']).then(k=>crypto.subtle.exportKey('jwk',k.privateKey)).then(j=>{j.kid='openai-sso-2026-06-08';j.alg='RS256';j.use='sig';console.log(JSON.stringify(j))})"
 ```
 
 把輸出設定為 Workers secret：
