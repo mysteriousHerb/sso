@@ -139,42 +139,44 @@ export class D1Store {
     }
 
     const now = new Date().toISOString();
-    const result = await this.db.batch([
-      this.db
-        .prepare(
-          `UPDATE invite_codes
-           SET used_count = used_count + 1
-           WHERE code = ?
-             AND enabled = 1
-             AND used_count < max_uses`
-        )
-        .bind(normalizedCode),
-      this.db
-        .prepare(
-          `INSERT OR IGNORE INTO users
-             (email, display_name, invite_code, created_at, last_login_at)
-           VALUES (?, ?, ?, ?, ?)`
-        )
-        .bind(
-          normalizedEmail,
-          normalizeDisplayName(displayName, normalizedEmail),
-          normalizedCode,
-          now,
-          now
-        )
-    ]);
-
-    const inviteUpdate = result[0];
-    const userInsert = result[1];
+    const inviteUpdate = await this.db
+      .prepare(
+        `UPDATE invite_codes
+         SET used_count = used_count + 1
+         WHERE code = ?
+           AND enabled = 1
+           AND used_count < max_uses`
+      )
+      .bind(normalizedCode)
+      .run();
     if (inviteUpdate.meta.changes !== 1) {
       throw new Error("邀請碼無效或使用次數已達上限");
     }
-    if (userInsert.meta.changes !== 1) {
-      const user = await this.getUserByEmail(normalizedEmail);
-      return { user, created: false };
+
+    const userInsert = await this.db
+      .prepare(
+        `INSERT OR IGNORE INTO users
+           (email, display_name, invite_code, created_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .bind(
+        normalizedEmail,
+        normalizeDisplayName(displayName, normalizedEmail),
+        normalizedCode,
+        now,
+        now
+      )
+      .run();
+
+    if (userInsert.meta.changes === 1) {
+      return { user: await this.getUserByEmail(normalizedEmail), created: true };
     }
 
-    return { user: await this.getUserByEmail(normalizedEmail), created: true };
+    const user = await this.getUserByEmail(normalizedEmail);
+    if (user) {
+      return { user, created: false };
+    }
+    throw new Error("建立使用者失敗");
   }
 
   async updateUserLogin(email) {
