@@ -69,7 +69,6 @@ async function handleLogin(request, inviteService, oidcService) {
 
   const user = await inviteService.loginWithInvite({
     email: String(form.get("email") ?? ""),
-    displayName: String(form.get("display_name") ?? ""),
     inviteCode: String(form.get("invite_code") ?? "")
   });
   const code = await oidcService.createAuthorizationCode({
@@ -222,9 +221,6 @@ function renderLoginPage(request) {
         .join("")}
       <label>電子郵件
         <input name="email" type="email" autocomplete="email" required>
-      </label>
-      <label>顯示名稱
-        <input name="display_name" autocomplete="name">
       </label>
       <label>邀請碼
         <input name="invite_code" autocomplete="one-time-code">

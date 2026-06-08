@@ -79,6 +79,20 @@ describe("Worker HTTP 端點", () => {
     assert.ok(location.searchParams.get("code"));
   });
 
+  it("/authorize 登入表單不要求使用者填寫名字", async () => {
+    const { app } = createTestApp();
+
+    const response = await app.fetch(
+      new Request(
+        "https://sso.example.com/authorize?client_id=openai-client&redirect_uri=https%3A%2F%2Fauth.openai.com%2Foidc%2Fcallback&response_type=code&scope=openid%20email"
+      )
+    );
+
+    const html = await response.text();
+    assert.doesNotMatch(html, /display_name/);
+    assert.doesNotMatch(html, /顯示名稱/);
+  });
+
   it("/token 會接受表單格式並回傳 id_token", async () => {
     const { store, app } = createTestApp();
     await store.createInviteCode({ code: "JOIN", maxUses: 100 });

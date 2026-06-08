@@ -85,6 +85,8 @@ export class MemoryStore {
   }
 }
 
+export const DEFAULT_DISPLAY_NAME = "Neko Maau";
+
 export class D1Store {
   constructor(db) {
     this.db = db;
@@ -254,7 +256,7 @@ export function normalizeInviteCode(code) {
 
 function normalizeDisplayName(displayName, email) {
   const normalized = String(displayName ?? "").trim();
-  return normalized || email.split("@")[0];
+  return normalized || DEFAULT_DISPLAY_NAME;
 }
 
 function inviteFromRow(row) {
