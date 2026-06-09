@@ -38,6 +38,16 @@ function createTestApp(envOverrides = {}, appOptions = {}) {
   return { store, config, app: createApp({ store, config, ...appOptions }) };
 }
 
+async function withGlobalFetch(fetchImplementation, callback) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImplementation;
+  try {
+    return await callback();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 describe("Worker HTTP 端點", () => {
   it("/ 會顯示可直接登入 OpenAI 的表單", async () => {
     const { app } = createTestApp({
@@ -198,6 +208,80 @@ describe("Worker HTTP 端點", () => {
     assert.equal(calls[0].init.body.get("response"), "valid-login-token");
     assert.equal(calls[0].init.body.get("remoteip"), "203.0.113.20");
     assert.ok(new URL(response.headers.get("location")).searchParams.get("code"));
+  });
+
+  it("/login 使用預設 fetch 驗證 Turnstile 時會保留 Workers this", async () => {
+    await withGlobalFetch(
+      function () {
+        if (this !== globalThis) {
+          throw new TypeError("Illegal invocation: function called with incorrect `this` reference.");
+        }
+        return Response.json({ success: true });
+      },
+      async () => {
+        const { store, app } = createTestApp({
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+          TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA"
+        });
+        await store.createInviteCode({ code: "JOIN", maxUses: 1 });
+        await store.createUserWithInvite({
+          email: "member@itc.989567.xyz",
+          displayName: "Neko Maau",
+          inviteCode: "JOIN"
+        });
+
+        const response = await app.fetch(
+          new Request("https://sso.example.com/login", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              account: "member",
+              "cf-turnstile-response": "valid-login-token",
+              client_id: "openai-client",
+              redirect_uri: "https://auth.openai.com/oidc/callback",
+              scope: "openid email"
+            })
+          })
+        );
+
+        assert.equal(response.status, 302);
+      }
+    );
+  });
+
+  it("/register 使用預設 fetch 驗證 Turnstile 時會保留 Workers this", async () => {
+    await withGlobalFetch(
+      function () {
+        if (this !== globalThis) {
+          throw new TypeError("Illegal invocation: function called with incorrect `this` reference.");
+        }
+        return Response.json({ success: true });
+      },
+      async () => {
+        const { store, app } = createTestApp({
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+          TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA"
+        });
+        await store.createInviteCode({ code: "JOIN", maxUses: 100 });
+
+        const response = await app.fetch(
+          new Request("https://sso.example.com/register", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              account: "user",
+              invite_code: "JOIN",
+              "cf-turnstile-response": "valid-register-token",
+              client_id: "openai-client",
+              redirect_uri: "https://auth.openai.com/oidc/callback",
+              scope: "openid email"
+            })
+          })
+        );
+
+        assert.equal(response.status, 302);
+      }
+    );
   });
 
   it("/register 會顯示獨立註冊表單", async () => {
