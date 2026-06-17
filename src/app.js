@@ -37,6 +37,12 @@ export function createApp({ store, config, turnstileFetch = (...args) => globalT
         if (request.method === "POST" && url.pathname === "/register") {
           return await handleRegister(request, inviteService, oidcService, turnstileService);
         }
+        if (request.method === "POST" && url.pathname === "/api/login") {
+          return await handleApiLogin(request, inviteService, oidcService, config);
+        }
+        if (request.method === "POST" && url.pathname === "/api/register") {
+          return await handleApiRegister(request, inviteService, oidcService, config);
+        }
         if (request.method === "POST" && url.pathname === "/token") {
           return await handleToken(request, oidcService);
         }
@@ -170,6 +176,99 @@ async function handleUserInfo(request, oidcService, config) {
   const claims = await verifyJwt(match[1], requirePrivateJwk(config));
   const info = await oidcService.getUserInfo(claims.email);
   return json(info);
+}
+
+async function handleApiLogin(request, inviteService, oidcService, config) {
+  if (!isAdmin(request, config)) {
+    return json({ error: "未授權" }, { status: 401 });
+  }
+  const body = await request.json();
+  const account = body.account;
+  if (!account) {
+    return json({ error: "缺少 account 參數" }, { status: 400 });
+  }
+  const user = await inviteService.login({ account });
+  const authRequest = {
+    clientId: body.client_id ?? config.clientId,
+    redirectUri: body.redirect_uri ?? config.redirectUris[0],
+    scope: body.scope ?? "openid email",
+    state: body.state ?? "",
+    nonce: body.nonce ?? "",
+    codeChallenge: body.code_challenge ?? "",
+    codeChallengeMethod: body.code_challenge_method ?? ""
+  };
+  oidcService.validateAuthorizeRequest(
+    new URLSearchParams({
+      client_id: authRequest.clientId,
+      redirect_uri: authRequest.redirectUri,
+      response_type: "code",
+      scope: authRequest.scope
+    })
+  );
+  const code = await oidcService.createAuthorizationCode({
+    user,
+    clientId: authRequest.clientId,
+    redirectUri: authRequest.redirectUri,
+    scope: authRequest.scope,
+    nonce: authRequest.nonce,
+    codeChallenge: authRequest.codeChallenge,
+    codeChallengeMethod: authRequest.codeChallengeMethod
+  });
+  const redirect = new URL(authRequest.redirectUri);
+  redirect.searchParams.set("code", code.code);
+  if (authRequest.state) {
+    redirect.searchParams.set("state", authRequest.state);
+  }
+  return json({ code: code.code, redirect_uri: redirect.toString(), user });
+}
+
+async function handleApiRegister(request, inviteService, oidcService, config) {
+  if (!isAdmin(request, config)) {
+    return json({ error: "未授權" }, { status: 401 });
+  }
+  const body = await request.json();
+  const account = body.account;
+  const inviteCode = body.invite_code;
+  if (!account || !inviteCode) {
+    return json({ error: "缺少 account 或 invite_code 參數" }, { status: 400 });
+  }
+  const user = await inviteService.registerWithInvite({
+    account,
+    displayName: body.display_name,
+    inviteCode
+  });
+  const authRequest = {
+    clientId: body.client_id ?? config.clientId,
+    redirectUri: body.redirect_uri ?? config.redirectUris[0],
+    scope: body.scope ?? "openid email",
+    state: body.state ?? "",
+    nonce: body.nonce ?? "",
+    codeChallenge: body.code_challenge ?? "",
+    codeChallengeMethod: body.code_challenge_method ?? ""
+  };
+  oidcService.validateAuthorizeRequest(
+    new URLSearchParams({
+      client_id: authRequest.clientId,
+      redirect_uri: authRequest.redirectUri,
+      response_type: "code",
+      scope: authRequest.scope
+    })
+  );
+  const code = await oidcService.createAuthorizationCode({
+    user,
+    clientId: authRequest.clientId,
+    redirectUri: authRequest.redirectUri,
+    scope: authRequest.scope,
+    nonce: authRequest.nonce,
+    codeChallenge: authRequest.codeChallenge,
+    codeChallengeMethod: authRequest.codeChallengeMethod
+  });
+  const redirect = new URL(authRequest.redirectUri);
+  redirect.searchParams.set("code", code.code);
+  if (authRequest.state) {
+    redirect.searchParams.set("state", authRequest.state);
+  }
+  return json({ code: code.code, redirect_uri: redirect.toString(), user });
 }
 
 async function handleInviteCodesAdmin(request, store, config) {
